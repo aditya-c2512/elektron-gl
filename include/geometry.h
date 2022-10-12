@@ -6,8 +6,10 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <class t> struct Vec2 {
-	union {
+template <class t> struct Vec2 
+{
+	union 
+	{
 		struct {t u, v;};
 		struct {t x, y;};
 		t raw[2];
@@ -17,10 +19,11 @@ template <class t> struct Vec2 {
 	inline Vec2<t> operator +(const Vec2<t> &V) const { return Vec2<t>(u+V.u, v+V.v); }
 	inline Vec2<t> operator -(const Vec2<t> &V) const { return Vec2<t>(u-V.u, v-V.v); }
 	inline Vec2<t> operator *(float f)          const { return Vec2<t>(u*f, v*f); }
-	template <class > friend std::ostream& operator<<(std::ostream& s, Vec2<t>& v);
+	template <class> friend std::ostream& operator<<(std::ostream& s, Vec2<t>& v);
 };
 
-template <class t> struct Vec3 {
+template <class t> struct Vec3 
+{
 	union {
 		struct {t x, y, z;};
 		struct { t ivert, iuv, inorm; };
@@ -35,7 +38,7 @@ template <class t> struct Vec3 {
 	inline t       operator *(const Vec3<t> &v) const { return x*v.x + y*v.y + z*v.z; }
 	float norm () const { return std::sqrt(x*x+y*y+z*z); }
 	Vec3<t> & normalize(t l=1) { *this = (*this)*(l/norm()); return *this; }
-	template <class > friend std::ostream& operator<<(std::ostream& s, Vec3<t>& v);
+	template <class> friend std::ostream& operator<<(std::ostream& s, Vec3<t>& v);
 };
 
 typedef Vec2<float> Vec2f;
@@ -43,12 +46,14 @@ typedef Vec2<int>   Vec2i;
 typedef Vec3<float> Vec3f;
 typedef Vec3<int>   Vec3i;
 
-template <class t> std::ostream& operator<<(std::ostream& s, Vec2<t>& v) {
+template <class t> std::ostream& operator<<(std::ostream& s, Vec2<t>& v) 
+{
 	s << "(" << v.x << ", " << v.y << ")\n";
 	return s;
 }
 
-template <class t> std::ostream& operator<<(std::ostream& s, Vec3<t>& v) {
+template <class t> std::ostream& operator<<(std::ostream& s, Vec3<t>& v) 
+{
 	s << "(" << v.x << ", " << v.y << ", " << v.z << ")\n";
 	return s;
 }

@@ -1,3 +1,4 @@
+*.a
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
