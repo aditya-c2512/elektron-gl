@@ -121,12 +121,11 @@ int main(int argc, char** argv)
             pts[j] = world2screen(model->vert(face[j]));
             world_coords[j]  = model->vert(face[j]); 
             uvs[j] = model->uv(i,j);
-            // std::cout << uvs[j] << ", ";
-            colors[j] = diffuse.get(uvs[j].x, 1.0f-uvs[j].y);
+            int uv_x = uvs[j].x*diffuse.get_width();
+            int uv_y = diffuse.get_height() - uvs[j].y*diffuse.get_height();
+            // std::cout << uv_x << "," << uv_y << " | ";
+            colors[j] = diffuse.get(uv_x, uv_y);
         }
-        // std::cout << colors[0].r << "," << colors[0].g << "," << colors[0].b << "," << std::endl;
-        // std::cout << colors[1].r << "," << colors[1].g << "," << colors[1].b << "," << std::endl;
-        // std::cout << colors[2].r << "," << colors[2].g << "," << colors[2].b << "," << std::endl;
         // std::cout << std::endl;
         TGAColor final_color = TGAColor((colors[0].r+colors[1].r+colors[2].r)/3.0f,
                                         (colors[0].g+colors[1].g+colors[2].g)/3.0f,
