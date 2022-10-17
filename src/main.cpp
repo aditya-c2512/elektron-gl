@@ -10,8 +10,8 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 Model *model = NULL;
 
-#define width 200
-#define height 200
+#define width 800
+#define height 800
 
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) 
 {
@@ -121,13 +121,13 @@ int main(int argc, char** argv)
             pts[j] = world2screen(model->vert(face[j]));
             world_coords[j]  = model->vert(face[j]); 
             uvs[j] = model->uv(i,j);
-            std::cout << uvs[j] << ", ";
+            // std::cout << uvs[j] << ", ";
             colors[j] = diffuse.get(uvs[j].x, 1.0f-uvs[j].y);
         }
         // std::cout << colors[0].r << "," << colors[0].g << "," << colors[0].b << "," << std::endl;
         // std::cout << colors[1].r << "," << colors[1].g << "," << colors[1].b << "," << std::endl;
         // std::cout << colors[2].r << "," << colors[2].g << "," << colors[2].b << "," << std::endl;
-        std::cout << std::endl;
+        // std::cout << std::endl;
         TGAColor final_color = TGAColor((colors[0].r+colors[1].r+colors[2].r)/3.0f,
                                         (colors[0].g+colors[1].g+colors[2].g)/3.0f,
                                         (colors[0].b+colors[1].b+colors[2].b)/3.0f,
@@ -135,8 +135,8 @@ int main(int argc, char** argv)
         Vec3f n = cross((world_coords[2]-world_coords[0]),(world_coords[1]-world_coords[0]));
         n.normalize(); 
         float intensity = n*light_dir;
-        triangle(pts, zbuffer, image, TGAColor(final_color.r, final_color.g, final_color.g, 255));
-        // if(intensity > 0) triangle(pts, zbuffer, image, TGAColor(intensity*final_color.r, intensity*final_color.g, intensity*final_color.g, 255));
+        // triangle(pts, zbuffer, image, TGAColor(final_color.r, final_color.g, final_color.g, 255));
+        if(intensity > 0) triangle(pts, zbuffer, image, TGAColor(intensity*final_color.r, intensity*final_color.g, intensity*final_color.g, 255));
     }
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
