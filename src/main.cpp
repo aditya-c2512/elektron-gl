@@ -10,8 +10,8 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 Model *model = NULL;
 
-#define width 800
-#define height 800
+#define width 1080
+#define height 1080
 
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) 
 {
@@ -41,7 +41,18 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
         }
     }
 }
-
+Vec3f barycentric(Vec2f& p0,Vec2f& p1,Vec2f& p2,Vec3f& P)
+{
+    Vec3f u = cross(Vec3f(p2.x-p0.x,
+                        p1.x-p0.x,
+                        p0.x-P.x),
+                    Vec3f(p2.y-p0.y,
+                        p1.y-p0.y,
+                        p0.y-P.y)
+                    );
+    if(std::abs(u.z) < 1) return Vec3f(-1, 1, 1);
+    return Vec3f(1.0f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);
+}
 Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) 
 {
     Vec3f s[2];
@@ -57,7 +68,7 @@ Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P)
     return Vec3f(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
-void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) 
+void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAImage& diffuse, Vec2f* uvs, float intensity) 
 {
     Vec2f bboxmin( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
     Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
@@ -78,7 +89,15 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color)
             Vec3f bc_screen  = barycentric(pts[0], pts[1], pts[2], P);
             if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) continue;
             P.z = 0;
-            for (int i=0; i<3; i++) P.z += pts[i][2]*bc_screen[i];
+            Vec2f uv;
+            for(int i=0; i<3; i++) 
+            {
+                P.z += pts[i][2]*bc_screen[i];
+                uv.x += uvs[i].x*bc_screen[i];
+                uv.y += uvs[i].y*bc_screen[i];
+            }
+            TGAColor color = diffuse.get(uv.x, uv.y);
+            color = TGAColor(color.r * intensity, color.g * intensity, color.b * intensity, 255);
             if (zbuffer[int(P.x+P.y*width)]<P.z) 
             {
                 zbuffer[int(P.x+P.y*width)] = P.z;
@@ -115,27 +134,35 @@ int main(int argc, char** argv)
         Vec3f world_coords[3];
         Vec3f pts[3];
         Vec2f uvs[3];
-        TGAColor colors[3];
+        // TGAColor colors[3];
         for (int j=0; j<3; j++) 
         {
             pts[j] = world2screen(model->vert(face[j]));
             world_coords[j]  = model->vert(face[j]); 
             uvs[j] = model->uv(i,j);
             int uv_x = uvs[j].x*diffuse.get_width();
-            int uv_y = diffuse.get_height() - uvs[j].y*diffuse.get_height();
+            int uv_y = uvs[j].y*diffuse.get_height();
+            uvs[j].x = uv_x;
+            uvs[j].y = uv_y;
             // std::cout << uv_x << "," << uv_y << " | ";
-            colors[j] = diffuse.get(uv_x, uv_y);
+            // colors[j] = diffuse.get(uv_x, uv_y);
         }
         // std::cout << std::endl;
-        TGAColor final_color = TGAColor((colors[0].r+colors[1].r+colors[2].r)/3.0f,
-                                        (colors[0].g+colors[1].g+colors[2].g)/3.0f,
-                                        (colors[0].b+colors[1].b+colors[2].b)/3.0f,
-                                        255);
+        // TGAColor final_color = TGAColor((colors[0].r+colors[1].r+colors[2].r)/3.0f,
+        //                                 (colors[0].g+colors[1].g+colors[2].g)/3.0f,
+        //                                 (colors[0].b+colors[1].b+colors[2].b)/3.0f,
+        //                                 255);
         Vec3f n = cross((world_coords[2]-world_coords[0]),(world_coords[1]-world_coords[0]));
         n.normalize(); 
         float intensity = n*light_dir;
+        if(intensity > 0)
+        {
+            triangle(pts, zbuffer, image, diffuse, uvs, intensity);
+        }
+        
         // triangle(pts, zbuffer, image, TGAColor(final_color.r, final_color.g, final_color.g, 255));
-        if(intensity > 0) triangle(pts, zbuffer, image, TGAColor(intensity*final_color.r, intensity*final_color.g, intensity*final_color.g, 255));
+        
+        // if(intensity > 0) triangle(pts, zbuffer, image, TGAColor(intensity*final_color.r, intensity*final_color.g, intensity*final_color.g, 255));
     }
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image

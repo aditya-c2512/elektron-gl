@@ -10,6 +10,9 @@ private:
 	std::vector<Vec3f> verts_;
 	std::vector<std::vector<int> > faces_;
 	std::vector<Vec2f> tex_coords_;
+	std::vector<int> facet_vrt{};
+    std::vector<int> facet_tex{};  // per-triangle indices in the above arrays
+    std::vector<int> facet_nrm{};
 	TGAImage diffuse_map;
 public:
 	Model(const char *model_file, const char *diffuse_file);

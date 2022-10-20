@@ -28,14 +28,23 @@ Model::Model(const char *model_file, const char *diffuse_file) : verts_(), faces
             tex_coords_.push_back({uv.x, 1.0f-uv.y});
         }
         else if (!line.compare(0, 2, "f ")) {
-            std::vector<int> f;
-            int itrash, idx;
+            std::vector<int> fs;
+            int f,t,n;
             iss >> trash;
-            while (iss >> idx >> trash >> itrash >> trash >> itrash) {
-                idx--; // in wavefront obj all indices start at 1, not zero
-                f.push_back(idx);
+            int cnt = 0;
+            while (iss >> f >> trash >> t >> trash >> n) {
+                facet_vrt.push_back(--f);
+                fs.push_back(f);
+                facet_tex.push_back(--t);
+                facet_nrm.push_back(--n);
+                cnt++;
             }
-            faces_.push_back(f);
+            faces_.push_back(fs);
+            if (3!=cnt) {
+                std::cerr << "Error: the obj file is supposed to be triangulated" << std::endl;
+                in.close();
+                return;
+            }
         }
     }
     std::cerr << "# v# " << verts_.size() << " f# "  << faces_.size() << std::endl;
@@ -51,7 +60,7 @@ int Model::nverts() {
 }
 
 int Model::nfaces() {
-    return (int)faces_.size();
+    return facet_vrt.size()/3;
 }
 
 std::vector<int> Model::face(const int idx) {
@@ -71,6 +80,5 @@ void Model::load_texture(std::string filename, const std::string suffix, TGAImag
 
 Vec2f Model::uv(const int iface, const int nthvert)
 {
-    std::vector<int> f = face(iface);
-    return tex_coords_[f[nthvert]];
+    return tex_coords_[facet_tex[iface*3+nthvert]];
 }
