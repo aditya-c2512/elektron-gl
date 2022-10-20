@@ -1,4 +1,6 @@
-*.a
+.vscode/
+libmodel.a
+libtgaimage.a
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
