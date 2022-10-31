@@ -13,7 +13,7 @@ Model *model = NULL;
 #define depth 255
 Vec3f m2v(Matrix41 m) 
 {
-    return Vec3f((m[0][0])/m[3][0], (m[1][0])/m[3][0], (m[2][0])/m[3][0]);
+    return Vec3f((int)(m[0][0]/m[3][0]), (int)(m[1][0]/m[3][0]), (int)(m[2][0]/m[3][0]));
 }
 
 Matrix41 v2m(Vec3f v) 
@@ -155,7 +155,6 @@ int main(int argc, char** argv)
 
     Matrix Projection = Matrix::identity();
     Matrix ViewPort = viewport(width/8, height/8, width*3/4, height*3/4);
-    // Matrix ViewPort = viewport(0, 0, width, height);
     Projection[3][2] = -1.f/camera.z;
     
     TGAImage image(width, height, TGAImage::RGB);
@@ -169,7 +168,7 @@ int main(int argc, char** argv)
         for (int j=0; j<3; j++) 
         {
             Vec3f v = model->vert(face[j]);
-            pts[j] = world2screen(m2v(Projection * v2m(v)));
+            pts[j] = m2v(ViewPort * Projection * v2m(v));
             world_coords[j]  = v;
         }
         Vec3f n = cross((world_coords[2]-world_coords[0]),(world_coords[1]-world_coords[0]));
@@ -178,14 +177,14 @@ int main(int argc, char** argv)
         if(intensity > 0)
         {
             Vec2f uvs[3];
-            for (int k=0; k<3; k++) {
+            for (int k=0; k<3; k++) 
+            {
                 uvs[k] = model->uv(i, k) * diffuse.get_width();
             }
-            // std::cout << pts[0] << "\t||\t" << pts[1] << "\t||\t" << pts[2] << std::endl;
             triangle(pts, zbuffer, image, diffuse, uvs, intensity);
         }
     }
-    
+
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("renders/lesson_04.tga");
     delete model;
