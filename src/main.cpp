@@ -6,12 +6,38 @@
 #include "model.h"
 #include "geometry.h"
 
-const TGAColor white = TGAColor(255, 255, 255, 255);
-const TGAColor red   = TGAColor(255, 0,   0,   255);
 Model *model = NULL;
 
-#define width 1080
-#define height 1080
+#define width 800
+#define height 800
+#define depth 255
+Vec3f m2v(Matrix41 m) 
+{
+    return Vec3f((m[0][0])/m[3][0], (m[1][0])/m[3][0], (m[2][0])/m[3][0]);
+}
+
+Matrix41 v2m(Vec3f v) 
+{
+    Matrix41 m;
+    m[0][0] = v.x;
+    m[1][0] = v.y;
+    m[2][0] = v.z;
+    m[3][0] = 1.f;
+    return m;
+}
+
+Matrix viewport(int x, int y, int w, int h) {
+    Matrix m = Matrix::identity();
+    m[0][3] = x+w/2.f;
+    m[1][3] = y+h/2.f;
+    m[2][3] = depth/2.f;
+
+    m[0][0] = w/2.f;
+    m[1][1] = h/2.f;
+    m[2][2] = depth/2.f;
+    return m;
+}
+
 
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) 
 {
@@ -123,8 +149,15 @@ int main(int argc, char** argv)
     }
 
     float *zbuffer = new float[width*height];
-    for (int i=width*height; i--; zbuffer[i] = -std::numeric_limits<float>::max());
+    for (int i=width*height; i--; zbuffer[i] = -depth);
 
+    Vec3f camera(0,0,3);
+
+    Matrix Projection = Matrix::identity();
+    Matrix ViewPort = viewport(width/8, height/8, width*3/4, height*3/4);
+    // Matrix ViewPort = viewport(0, 0, width, height);
+    Projection[3][2] = -1.f/camera.z;
+    
     TGAImage image(width, height, TGAImage::RGB);
     Vec3f light_dir(0,0,-1);
     TGAImage diffuse = model->diffuse();
@@ -133,40 +166,28 @@ int main(int argc, char** argv)
         std::vector<int> face = model->face(i);
         Vec3f world_coords[3];
         Vec3f pts[3];
-        Vec2f uvs[3];
-        // TGAColor colors[3];
         for (int j=0; j<3; j++) 
         {
-            pts[j] = world2screen(model->vert(face[j]));
-            world_coords[j]  = model->vert(face[j]); 
-            uvs[j] = model->uv(i,j);
-            int uv_x = uvs[j].x*diffuse.get_width();
-            int uv_y = uvs[j].y*diffuse.get_height();
-            uvs[j].x = uv_x;
-            uvs[j].y = uv_y;
-            // std::cout << uv_x << "," << uv_y << " | ";
-            // colors[j] = diffuse.get(uv_x, uv_y);
+            Vec3f v = model->vert(face[j]);
+            pts[j] = world2screen(m2v(Projection * v2m(v)));
+            world_coords[j]  = v;
         }
-        // std::cout << std::endl;
-        // TGAColor final_color = TGAColor((colors[0].r+colors[1].r+colors[2].r)/3.0f,
-        //                                 (colors[0].g+colors[1].g+colors[2].g)/3.0f,
-        //                                 (colors[0].b+colors[1].b+colors[2].b)/3.0f,
-        //                                 255);
         Vec3f n = cross((world_coords[2]-world_coords[0]),(world_coords[1]-world_coords[0]));
         n.normalize(); 
         float intensity = n*light_dir;
         if(intensity > 0)
         {
+            Vec2f uvs[3];
+            for (int k=0; k<3; k++) {
+                uvs[k] = model->uv(i, k) * diffuse.get_width();
+            }
+            // std::cout << pts[0] << "\t||\t" << pts[1] << "\t||\t" << pts[2] << std::endl;
             triangle(pts, zbuffer, image, diffuse, uvs, intensity);
         }
-        
-        // triangle(pts, zbuffer, image, TGAColor(final_color.r, final_color.g, final_color.g, 255));
-        
-        // if(intensity > 0) triangle(pts, zbuffer, image, TGAColor(intensity*final_color.r, intensity*final_color.g, intensity*final_color.g, 255));
     }
-
+    
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-    image.write_tga_file("renders/lesson_03.tga");
+    image.write_tga_file("renders/lesson_04.tga");
     delete model;
     return 0;
 }
