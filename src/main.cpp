@@ -11,23 +11,9 @@ Model *model = NULL;
 #define width 800
 #define height 800
 #define depth 255
-Vec3f m2v(Matrix41 m) 
-{
-    return Vec3f((int)(m[0][0]/m[3][0]), (int)(m[1][0]/m[3][0]), (int)(m[2][0]/m[3][0]));
-}
-
-Matrix41 v2m(Vec3f v) 
-{
-    Matrix41 m;
-    m[0][0] = v.x;
-    m[1][0] = v.y;
-    m[2][0] = v.z;
-    m[3][0] = 1.f;
-    return m;
-}
 
 Matrix viewport(int x, int y, int w, int h) {
-    Matrix m = Matrix::identity();
+    Matrix m = Matrix::identity(4);
     m[0][3] = x+w/2.f;
     m[1][3] = y+h/2.f;
     m[2][3] = depth/2.f;
@@ -38,6 +24,19 @@ Matrix viewport(int x, int y, int w, int h) {
     return m;
 }
 
+Matrix lookAt(Vec3f eye, Vec3f center, Vec3f up) {
+    Vec3f z = (eye-center).normalize();
+    Vec3f x = (up^z).normalize();
+    Vec3f y = (z^x).normalize();
+    Matrix res = Matrix::identity(4);
+    for (int i=0; i<3; i++) {
+        res[0][i] = x[i];
+        res[1][i] = y[i];
+        res[2][i] = z[i];
+        res[i][3] = -center[i];
+    }
+    return res;
+}
 
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) 
 {
@@ -69,9 +68,9 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
 }
 Vec3f barycentric(Vec2f& p0,Vec2f& p1,Vec2f& p2,Vec3f& P)
 {
-    Vec3f u = cross(Vec3f(p2.x-p0.x,
+    Vec3f u = (Vec3f(p2.x-p0.x,
                         p1.x-p0.x,
-                        p0.x-P.x),
+                        p0.x-P.x)^
                     Vec3f(p2.y-p0.y,
                         p1.y-p0.y,
                         p0.y-P.y)
@@ -88,7 +87,7 @@ Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P)
         s[i][1] = B[i]-A[i];
         s[i][2] = A[i]-P[i];
     }
-    Vec3f u = cross(s[0], s[1]);
+    Vec3f u = (s[0]^s[1]);
     if (std::abs(u[2])>1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
         return Vec3f(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);
     return Vec3f(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
@@ -151,27 +150,34 @@ int main(int argc, char** argv)
     float *zbuffer = new float[width*height];
     for (int i=width*height; i--; zbuffer[i] = -depth);
 
-    Vec3f camera(0,0,3);
+    Vec3f light_dir = Vec3f(0,0,-1).normalize();
+    // Vec3f eye(1,1,3);
+    Vec3f eye(0,0,3);
+    Vec3f center(0,0,0);
 
-    Matrix Projection = Matrix::identity();
+    Matrix ModelView = lookAt(eye, center, Vec3f(0,1,0));
+    Matrix Projection = Matrix::identity(4);
     Matrix ViewPort = viewport(width/8, height/8, width*3/4, height*3/4);
-    Projection[3][2] = -1.f/camera.z;
+    Projection[3][2] = -1.f/(eye-center).norm();
     
     TGAImage image(width, height, TGAImage::RGB);
-    Vec3f light_dir(0,0,-1);
     TGAImage diffuse = model->diffuse();
     for (int i=0; i<model->nfaces(); i++) 
     {
         std::vector<int> face = model->face(i);
         Vec3f world_coords[3];
         Vec3f pts[3];
+        // float intensity[3];
         for (int j=0; j<3; j++) 
         {
             Vec3f v = model->vert(face[j]);
-            pts[j] = m2v(ViewPort * Projection * v2m(v));
+            pts[j] = Vec3f(ViewPort * Projection * ModelView * Matrix(v));
+            pts[j] = Vec3f(int(pts[j].x),int(pts[j].y),int(pts[j].z));
             world_coords[j]  = v;
+            // intensity[j] = model->norm(i, j)*light_dir;
         }
-        Vec3f n = cross((world_coords[2]-world_coords[0]),(world_coords[1]-world_coords[0]));
+        // Vec3f n = cross((world_coords[2]-world_coords[0]),(world_coords[1]-world_coords[0]));
+        Vec3f n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
         n.normalize(); 
         float intensity = n*light_dir;
         if(intensity > 0)
