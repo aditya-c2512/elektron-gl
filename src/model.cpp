@@ -20,6 +20,12 @@ Model::Model(const char *model_file, const char *diffuse_file) : verts_(), faces
             for (int i=0;i<3;i++) iss >> v[i];
             verts_.push_back(v);
         } 
+        else if (!line.compare(0, 3, "vn ")) {
+            iss >> trash >> trash;
+            Vec3f n;
+            for (int i=0;i<3;i++) iss >> n[i];
+            norms_.push_back(n);
+        } 
         else if(!line.compare(0, 3, "vt "))
         {
             iss >> trash >> trash;
@@ -69,6 +75,11 @@ std::vector<int> Model::face(const int idx) {
 
 Vec3f Model::vert(int i) {
     return verts_[i];
+}
+
+
+Vec3f Model::norm(int iface, int nvert) {
+    return norms_[facet_nrm[iface*3+nvert]].normalize();
 }
 
 void Model::load_texture(std::string filename, const std::string suffix, TGAImage &img) {

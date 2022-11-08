@@ -9,6 +9,7 @@ class Model {
 private:
 	std::vector<Vec3f> verts_;
 	std::vector<std::vector<int> > faces_;
+	std::vector<Vec3f> norms_;
 	std::vector<Vec2f> tex_coords_;
 	std::vector<int> facet_vrt{};
     std::vector<int> facet_tex{};  // per-triangle indices in the above arrays
@@ -21,6 +22,7 @@ public:
 	int nfaces();
 	Vec3f vert(int i);
 	std::vector<int> face(const int idx);
+	Vec3f norm(int iface, int nvert);
 	void load_texture(std::string filename, const std::string suffix, TGAImage &img);
 	Vec2f uv(const int face_i, const int vert_n);
 	const TGAImage& diffuse() const { return diffuse_map; }

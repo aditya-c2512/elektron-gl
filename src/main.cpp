@@ -1,4 +1,5 @@
 #include <vector>
+#include <iostream>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -8,8 +9,8 @@
 
 Model *model = NULL;
 
-#define width 800
-#define height 800
+#define width 1080
+#define height 1080
 #define depth 255
 
 Matrix viewport(int x, int y, int w, int h) {
@@ -93,7 +94,7 @@ Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P)
     return Vec3f(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
-void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAImage& diffuse, Vec2f* uvs, float intensity) 
+void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAImage& diffuse, Vec2f* uvs, float intensity[]) 
 {
     Vec2f bboxmin( std::numeric_limits<float>::max(),  std::numeric_limits<float>::max());
     Vec2f bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
@@ -115,14 +116,17 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAImage& diffuse, Ve
             if (bc_screen.x<0 || bc_screen.y<0 || bc_screen.z<0) continue;
             P.z = 0;
             Vec2f uv;
+            float fin_it = 0.0f;
             for(int i=0; i<3; i++) 
             {
                 P.z += pts[i][2]*bc_screen[i];
                 uv.x += uvs[i].x*bc_screen[i];
                 uv.y += uvs[i].y*bc_screen[i];
+                fin_it += intensity[i]*bc_screen[i];
             }
             TGAColor color = diffuse.get(uv.x, uv.y);
-            color = TGAColor(color.r * intensity, color.g * intensity, color.b * intensity, 255);
+            // color = TGAColor(255-color.r * fin_it, 255-color.g * fin_it, 255-color.b * fin_it, 255);
+            color = TGAColor(color.r * fin_it, color.g * fin_it, color.b * fin_it, 255);
             if (zbuffer[int(P.x+P.y*width)]<P.z) 
             {
                 zbuffer[int(P.x+P.y*width)] = P.z;
@@ -151,8 +155,8 @@ int main(int argc, char** argv)
     for (int i=width*height; i--; zbuffer[i] = -depth);
 
     Vec3f light_dir = Vec3f(0,0,-1).normalize();
-    // Vec3f eye(1,1,3);
-    Vec3f eye(0,0,3);
+    Vec3f eye(5,1,3);
+    // Vec3f eye(0,0,3);
     Vec3f center(0,0,0);
 
     Matrix ModelView = lookAt(eye, center, Vec3f(0,1,0));
@@ -167,32 +171,30 @@ int main(int argc, char** argv)
         std::vector<int> face = model->face(i);
         Vec3f world_coords[3];
         Vec3f pts[3];
-        // float intensity[3];
+        float intensity[3];
         for (int j=0; j<3; j++) 
         {
             Vec3f v = model->vert(face[j]);
             pts[j] = Vec3f(ViewPort * Projection * ModelView * Matrix(v));
             pts[j] = Vec3f(int(pts[j].x),int(pts[j].y),int(pts[j].z));
             world_coords[j]  = v;
-            // intensity[j] = model->norm(i, j)*light_dir;
+            intensity[j] = std::abs(model->norm(i, j)*light_dir);
+            // std::cout << intensity[0] << "," << intensity[1] << "," << intensity[2] << std::endl;
         }
-        // Vec3f n = cross((world_coords[2]-world_coords[0]),(world_coords[1]-world_coords[0]));
-        Vec3f n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
-        n.normalize(); 
-        float intensity = n*light_dir;
-        if(intensity > 0)
+        // Vec3f n = (world_coords[2]-world_coords[0])^(world_coords[1]-world_coords[0]);
+        // n.normalize(); 
+        // float in = n*light_dir;
+        // intensity[0] = intensity[1] = intensity[2] = in;
+        Vec2f uvs[3];
+        for (int k=0; k<3; k++) 
         {
-            Vec2f uvs[3];
-            for (int k=0; k<3; k++) 
-            {
-                uvs[k] = model->uv(i, k) * diffuse.get_width();
-            }
-            triangle(pts, zbuffer, image, diffuse, uvs, intensity);
+            uvs[k] = model->uv(i, k) * diffuse.get_width();
         }
+        triangle(pts, zbuffer, image, diffuse, uvs, intensity);
     }
 
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
-    image.write_tga_file("renders/lesson_04.tga");
+    image.write_tga_file("renders/lesson_05_normals.tga");
     delete model;
     return 0;
 }
