@@ -307,7 +307,8 @@ TGAColor TGAImage::get(int x, int y)
 	return TGAColor(data+(x+y*width)*bytespp, bytespp);
 }
 
-bool TGAImage::set(int x, int y, TGAColor c) {
+bool TGAImage::set(int x, int y, TGAColor c) 
+{
 	if (!data || x<0 || y<0 || x>=width || y>=height) 
     {
 		return false;
