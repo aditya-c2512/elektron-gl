@@ -2,6 +2,7 @@
 #include "model.h"
 #include "geometry.h"
 #include "elektron_gl.h"
+#include <iostream>
 
 #define width 1080
 #define height 1080
@@ -23,10 +24,50 @@ struct GouraudShader : public Shader {
         return Vec4f(Viewport*Projection*ModelView*Matrix(gl_Vertex));
     }
 
+    // virtual bool fragment(Vec3f bar, TGAColor &color) 
+    // {
+    //     float intensity = varying_intensity*bar;
+    //     color = TGAColor(255*intensity, 255*intensity, 255*intensity, 255); 
+    //     return false;
+    // }
     virtual bool fragment(Vec3f bar, TGAColor &color) 
     {
         float intensity = varying_intensity*bar;
-        color = TGAColor(255*intensity, 255*intensity, 255*intensity, 255); 
+        if (intensity>.85) intensity = 1;
+        else if (intensity>.60) intensity = .80;
+        else if (intensity>.45) intensity = .60;
+        else if (intensity>.30) intensity = .45;
+        else if (intensity>.15) intensity = .30;
+        else intensity = 0;
+        color = TGAColor(255 * intensity, 155 * intensity, 0, 255);
+        return false;
+    }
+};
+
+struct TexShader : public Shader {
+    Vec3f varying_intensity;
+    Vec2f varying_uv[3];
+
+    virtual Vec4f vertex(int iface, int nthvert) {
+        varying_uv[nthvert] = model->uv(iface, nthvert);
+        varying_intensity[nthvert] = std::max(0.f, model->normal(iface, nthvert)*light_dir);
+        Vec3f gl_Vertex = model->vert(iface, nthvert);
+        return Viewport*Projection*ModelView*Matrix(gl_Vertex);
+    }
+    
+    virtual bool fragment(Vec3f bar, TGAColor &color) {
+        float intensity = varying_intensity*bar;
+        Matrix m_bar(3,1);
+        Matrix m_vuv(2,3);
+        m_bar[0][0] = bar.x; m_bar[1][0] = bar.y; m_bar[2][0] = bar.z;
+        // std::cout << m_bar << std::endl;
+        m_vuv[0][0] = varying_uv[0][0]; m_vuv[1][0] = varying_uv[0][1];
+        m_vuv[0][1] = varying_uv[1][0]; m_vuv[1][1] = varying_uv[1][1];
+        m_vuv[0][2] = varying_uv[2][0]; m_vuv[1][2] = varying_uv[1][1];
+        Matrix m_uv = (m_vuv*m_bar);
+        Vec2f uv(m_vuv[0][0], m_vuv[1][0]);
+        color = model->diffuse(uv);
+        color = TGAColor(color.r * intensity, color.g * intensity, color.b * intensity,255);
         return false;
     }
 };
@@ -54,6 +95,7 @@ int main(int argc, char** argv)
     TGAImage zbuffer(width, height, TGAImage::RGB);
 
     GouraudShader gouraud;
+    // TexShader tex_shader;
     for (int i=0; i<model->nfaces(); i++) 
     {
         Vec4f screen_coords[3];
